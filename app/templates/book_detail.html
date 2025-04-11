@@ -1,0 +1,21 @@
+<h2>📘 {{ book.title }}</h2>
+
+<p><strong>Created by:</strong> {{ book.created_by.username }}</p>
+<p><strong>Collaborators:</strong> 
+  {% if book.collaborators.exists %}
+    {{ book.collaborators.all|join:", " }}
+  {% else %}
+    No collaborators yet.
+  {% endif %}
+</p>
+
+<h3>📄 Sketches:</h3>
+<ul>
+  {% for sketch in sketches %}
+    <li><a href="/sketch/{{ sketch.id }}/">{{ sketch.name }}</a></li>
+  {% empty %}
+    <li>No sketches yet.</li>
+  {% endfor %}
+</ul>
+
+<a href="/book/{{ book.id }}/create-sketch/">✏️ Create a new sketch</a>

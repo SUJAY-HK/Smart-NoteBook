@@ -1,0 +1,21 @@
+{% include 'navbar.html' %}
+
+<h2>Hello, {{ user.username }} 👋</h2>
+<p style="color: green;">You are logged in!</p>
+
+<a href="{% url 'create_sketch' %}">➕ Create Sketch</a> |
+<a href="{% url 'logout' %}">Logout</a>
+
+<ul>
+  <!-- {% for sketch in sketches %}
+    <li>
+      <a href="{% url 'sketch_room' sketch.id %}">{{ sketch.name }}</a> 
+      by {{ sketch.created_by.username }}
+    </li>
+  {% endfor %} -->
+  {% for book in my_books %}
+    <li>
+      <a href="{% url 'book_detail' book.id%}">{{book.name}}</a>
+    </li>
+  {% endfor %}
+</ul>

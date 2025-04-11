@@ -1,0 +1,9 @@
+{% include 'navbar.html' %}
+
+<h2>Create a New Sketch in <i>{{ book.title }}</i></h2>
+<form method="POST">
+  {% csrf_token %}
+  <input type="text" name="name" placeholder="Sketch name" required>
+  <button type="submit">Create Sketch</button>
+</form>
+<a href="/book/{{ book.id }}/">⬅️ Back to Book</a>

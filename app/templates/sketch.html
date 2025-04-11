@@ -1,0 +1,317 @@
+<body>
+  {% include 'navbar.html' %}
+
+  <div id="controls" style="position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.8); padding: 8px; border-radius: 4px;">
+    <input id="sketchName" type="text" value="{{ sketch_name }}" placeholder="Sketch name" style="margin-bottom:4px; width: 200px;" /><br>
+    <button id="undoBtn">↶ Undo</button>
+    <button id="saveBtn">💾 Save</button>
+    <button id="eraserBtn">🧽 Eraser</button><br>
+    <button id="clearAllBtn" style="margin-top: 6px; background-color: #f88;">🗑️ Clear All</button>
+
+    <button id="ocrBtn">🧠 Extract Equations from Sketch</button>
+<div id="ocrResult" style="margin-top: 12px; padding: 10px; background: #f1f1f1; max-width: 400px; white-space: pre-wrap;"></div>
+    <label>Brush: <input id="brushWidth" type="range" min="1" max="20" value="2"></label><br>
+    <label>Eraser: <input id="eraserWidth" type="range" min="5" max="50" value="20"></label>
+  </div>
+
+  <canvas id="fabricCanvas" style="position: absolute; top: 0; left: 0;"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+
+<!-- <video id="myVideo" autoplay muted style="width: 150px; position: fixed; bottom: 10px; right: 10px; z-index: 999;"></video>
+<video id="remoteVideo" autoplay style="width: 150px; position: fixed; bottom: 10px; right: 170px; z-index: 999;"></video>
+ These are already added if you followed the previous step -->
+<!-- <input id="peerIdInput" type="text" placeholder="Enter Peer ID to call" style="position:fixed; bottom: 170px; right:10px; z-index:999;" />
+<button onclick="callPeer('abc123')">Call</button>
+ --> 
+
+
+
+  <script>
+   
+    window.onload = () => {
+      const userColor = "{{ user_color }}";
+      const currentUserId = {{ user_id }};
+      let isErasing = false;
+      let sketchId = {{ sketch_id }};
+      const savedStrokes = JSON.parse(`{{ saved_strokes_json|escapejs }}`);
+      const undoStack = [];
+
+//       let peerId = null;
+// let localStream = null;
+// let socket = null;
+
+// const roomName = "{{ room_name }}";  // or whatever room/sketch_id you're using
+// const userId = "{{ user.id }}";      // Django context variable or random string
+
+// // 🔌 WebSocket connection (important to set before anything else)
+// socket = new WebSocket(`ws://${window.location.host}/ws/video/${roomName}/`);
+
+// socket.addEventListener("open", () => {
+//     console.log("WebSocket connected");
+// });
+
+// socket.addEventListener("message", function (event) {
+//     const data = JSON.parse(event.data);
+//     if (data.type === "peer_id" && data.user_id !== userId) {
+//         console.log(`Received peer ID of ${data.user_id}: ${data.peer_id}`);
+//         // Optionally call the peer
+//         // callPeer(data.peer_id);
+//     }
+// });
+
+// // 📞 Initialize PeerJS
+// const peer = new Peer();  // or new Peer({ host, port, path }) if you’re hosting PeerJS server
+
+// peer.on('open', (id) => {
+//     peerId = id;
+//     console.log('My Peer ID:', peerId);
+//     sendPeerIdToServer(peerId);
+// });
+
+// // 🎥 Stream setup
+// navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+//     .then((stream) => {
+//         localStream = stream;
+//         document.getElementById('myVideo').srcObject = stream;
+
+//         peer.on('call', (call) => {
+//             call.answer(stream);
+//             call.on('stream', (remoteStream) => {
+//                 document.getElementById('remoteVideo').srcObject = remoteStream;
+//             });
+//         });
+//     })
+//     .catch((err) => {
+//         console.error("Media access error:", err);
+//     });
+
+// // ☎️ Make call
+// function callPeer(peerId) {
+//     const call = peer.call(peerId, localStream);
+//     call.on('stream', (remoteStream) => {
+//         document.getElementById('remoteVideo').srcObject = remoteStream;
+//     });
+// }
+
+// // 🚀 Sync Peer ID with Django over WebSocket
+// function sendPeerIdToServer(peerId) {
+//     if (socket && socket.readyState === WebSocket.OPEN) {
+//         socket.send(JSON.stringify({
+//             type: "peer_id",
+//             user_id: userId,
+//             peer_id: peerId,
+//         }));
+//     } else {
+//         setTimeout(() => sendPeerIdToServer(peerId), 500); // Retry until open
+//     }
+// }
+
+
+
+
+      const canvas = new fabric.Canvas('fabricCanvas', {
+        isDrawingMode: true,
+        backgroundColor: '#ffffff'
+      });
+
+      function resizeCanvas() {
+        canvas.setWidth(window.innerWidth);
+        canvas.setHeight(window.innerHeight);
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      const brushWidthInput = document.getElementById('brushWidth');
+      const eraserWidthInput = document.getElementById('eraserWidth');
+      const undoBtn = document.getElementById('undoBtn');
+      const saveBtn = document.getElementById('saveBtn');
+      const eraserBtn = document.getElementById('eraserBtn');
+      const nameInput = document.getElementById('sketchName');
+      const clearAllBtn = document.getElementById('clearAllBtn');
+
+      function makePencil() {
+        const b = new fabric.PencilBrush(canvas);
+        b.color = userColor;
+        b.width = parseInt(brushWidthInput.value, 10);
+        return b;
+      }
+
+      canvas.freeDrawingBrush = makePencil();
+
+      eraserBtn.addEventListener('click', () => {
+        isErasing = !isErasing;
+        canvas.isDrawingMode = !isErasing;
+        eraserBtn.style.background = isErasing ? '#fdd' : '';
+      });
+
+      brushWidthInput.addEventListener('input', () => {
+        if (!isErasing) canvas.freeDrawingBrush.width = parseInt(brushWidthInput.value, 10);
+      });
+
+      function eraseAt(pointer) {
+        const objects = canvas.getObjects();
+        for (let i = objects.length - 1; i >= 0; i--) {
+          const obj = objects[i];
+          if (obj.type === 'path') {
+            const bb = obj.getBoundingRect();
+            if (pointer.x >= bb.left && pointer.x <= bb.left + bb.width &&
+                pointer.y >= bb.top && pointer.y <= bb.top + bb.height) {
+              canvas.remove(obj);
+              undoStack.push({ type: 'remove', object: obj });
+            }
+          }
+        }
+      }
+
+      clearAllBtn.addEventListener('click', async () => {
+        if (!confirm("Are you sure you want to clear all strokes?")) return;
+        canvas.clear();
+        canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+        undoStack.length = 0;
+        savedStrokes.length=0;
+
+        const resp = await fetch(`/clear-sketch/${sketchId}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          }
+        });
+
+        const result = await resp.json();
+        alert(result.success ? "Cleared." : "Failed.");
+      });
+
+      canvas.on('mouse:down', opt => {
+        if (isErasing) eraseAt(opt.pointer);
+      });
+      canvas.on('mouse:move', opt => {
+        if (isErasing && opt.pointer) eraseAt(opt.pointer);
+      });
+
+      // Replay strokes
+      for (let s of savedStrokes) {
+        const pathStr = `M ${s.x1} ${s.y1} L ${s.x2} ${s.y2}`;
+        const path = new fabric.Path(pathStr, {
+          stroke: s.eraser ? '#ffffff' : s.color,
+          strokeWidth: s.width || 2,
+          fill: null,
+          selectable: false,
+          evented: false,
+          globalCompositeOperation: s.eraser ? 'destination-out' : 'source-over'
+        });
+        canvas.add(path);
+        undoStack.push({ type: 'add', object: path });
+      }
+
+      const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+      const ws = new WebSocket(`${proto}${location.host}/ws/sketch/${sketchId}/`);
+
+      ws.onmessage = e => {
+        const d = JSON.parse(e.data);
+        const pathStr = `M ${d.x1} ${d.y1} L ${d.x2} ${d.y2}`;
+        const path = new fabric.Path(pathStr, {
+          stroke: d.eraser ? '#ffffff' : d.color,
+          strokeWidth: d.width,
+          fill: null,
+          selectable: false,
+          evented: false,
+          globalCompositeOperation: d.eraser ? 'destination-out' : 'source-over'
+        });
+        canvas.add(path);
+        undoStack.push({ type: 'add', object: path });
+      };
+
+      canvas.on('path:created', opt => {
+  if (isErasing) return;  // eraser logic handled elsewhere
+  const path = opt.path;
+  const pts = path.path;
+  const w = path.strokeWidth;
+
+  for (let i = 1; i < pts.length; i++) {
+    const [, x1, y1] = pts[i - 1];
+    const [, x2, y2] = pts[i];
+    const stroke = {
+      x1, y1, x2, y2,
+      color: userColor,
+      eraser: false,
+      width: w,
+      user: currentUserId
+    };
+    savedStrokes.push(stroke); // 🔥 SAVE NEW STROKE
+    ws.send(JSON.stringify(stroke)); // still send over WebSocket
+  }
+
+  undoStack.push({ type: 'add', object: path });
+});
+
+
+      undoBtn.addEventListener('click', () => {
+        const op = undoStack.pop();
+        if (!op) return;
+        if (op.type === 'add') canvas.remove(op.object);
+        else if (op.type === 'remove') canvas.add(op.object);
+      });
+
+      saveBtn.addEventListener('click', async () => {
+        const imageData = canvas.toDataURL({ format: 'png' });
+        const payload = {
+          id: sketchId,
+          image: imageData,
+          strokes: savedStrokes,
+          name: nameInput.value.trim()
+        };
+        const resp = await fetch('/save-sketch/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await resp.json();
+        if (result.id) sketchId = result.id;
+        if (result.name) nameInput.value = result.name;
+        alert('Saved sketch: ' + result.status);
+      });
+
+      function getCookie(name) {
+        let v = null;
+        document.cookie.split(';').forEach(c => {
+          const cTrimmed = c.trim();
+          if (cTrimmed.startsWith(name + '=')) {
+            v = decodeURIComponent(cTrimmed.slice(name.length + 1));
+          }
+        });
+        return v;
+      }
+      const ocrBtn = document.getElementById('ocrBtn');
+const ocrResultDiv = document.getElementById('ocrResult');
+
+ocrBtn.addEventListener('click', async () => {
+  ocrBtn.innerText = "⏳ Extracting...";
+  const resp = await fetch(`/upload-ocr/${sketchId}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken')
+    }
+  });
+
+  const data = await resp.json();
+
+  if (data.text) {
+    ocrResultDiv.innerHTML = "<strong>📄 Extracted Text:</strong><br>" + data.text.join("<br>");
+  } else {
+    ocrResultDiv.innerHTML = `<span style="color:red;">❌ ${data.error || 'Failed to extract text.'}</span>`;
+  }
+
+  ocrBtn.innerText = "🧠 Extract Equations from Sketch";
+});
+    };
+   
+  </script>
+</body>
