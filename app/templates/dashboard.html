@@ -1,21 +1,25 @@
 {% include 'navbar.html' %}
 
-<h2>Hello, {{ user.username }} 👋</h2>
-<p style="color: green;">You are logged in!</p>
+<div style="max-width: 800px; margin: 40px auto; font-family: 'Segoe UI', sans-serif; padding: 20px;">
 
-<a href="{% url 'create_sketch' %}">➕ Create Sketch</a> |
-<a href="{% url 'logout' %}">Logout</a>
+  <h2 style="font-size: 2rem; color: #7E22CE;">Hello, <span style="font-weight: 600;">{{ user.username }}</span> 👋</h2>
+  <p style="color: #4CAF50; margin-bottom: 20px;">You are successfully logged in!</p>
 
-<ul>
-  <!-- {% for sketch in sketches %}
-    <li>
-      <a href="{% url 'sketch_room' sketch.id %}">{{ sketch.name }}</a> 
-      by {{ sketch.created_by.username }}
-    </li>
-  {% endfor %} -->
-  {% for book in my_books %}
-    <li>
-      <a href="{% url 'book_detail' book.id%}">{{book.name}}</a>
-    </li>
-  {% endfor %}
-</ul>
+  <div style="margin-bottom: 30px;">
+    <a href="{% url 'create_sketch' %}" style="background-color: #7E22CE; color: white; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-weight: bold;">➕ Create New Sketch</a>
+    <a href="{% url 'logout' %}" style="margin-left: 15px; color: #ff4b5c; text-decoration: none; font-weight: bold;">🚪 Logout</a>
+  </div>
+
+  <h3 style="font-size: 1.5rem; margin-bottom: 10px; color: #333;">📚 Your Sketch Books</h3>
+  <ul style="list-style: none; padding: 0;">
+    {% for book in my_books %}
+      <li style="background: #f9f5ff; padding: 12px 18px; margin-bottom: 12px; border-left: 4px solid #7E22CE; border-radius: 6px;">
+        <a href="{% url 'book_detail' book.id %}" style="text-decoration: none; color: #333; font-weight: 500;">
+          {{ book.name }}
+        </a>
+      </li>
+    {% empty %}
+      <li style="color: #777;">No books found. Create one to get started!</li>
+    {% endfor %}
+  </ul>
+</div>

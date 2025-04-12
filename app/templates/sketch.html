@@ -1,7 +1,10 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'app/style.css' %}">
 <body>
   {% include 'navbar.html' %}
 
-  <div id="controls" style="position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.8); padding: 8px; border-radius: 4px;">
+  <div id="controls" style="position: fixed; top: 80px; left: 10px; z-index: 999; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
     <input id="sketchName" type="text" value="{{ sketch_name }}" placeholder="Sketch name" style="margin-bottom:4px; width: 200px;" /><br>
     <button id="undoBtn">↶ Undo</button>
     <button id="saveBtn">💾 Save</button>

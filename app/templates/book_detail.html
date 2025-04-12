@@ -1,21 +1,39 @@
-<h2>📘 {{ book.title }}</h2>
+{% include 'navbar.html' %}
 
-<p><strong>Created by:</strong> {{ book.created_by.username }}</p>
-<p><strong>Collaborators:</strong> 
-  {% if book.collaborators.exists %}
-    {{ book.collaborators.all|join:", " }}
-  {% else %}
-    No collaborators yet.
-  {% endif %}
-</p>
+<div style="max-width: 800px; margin: 40px auto; font-family: 'Segoe UI', sans-serif; padding: 20px;">
 
-<h3>📄 Sketches:</h3>
-<ul>
-  {% for sketch in sketches %}
-    <li><a href="/sketch/{{ sketch.id }}/">{{ sketch.name }}</a></li>
-  {% empty %}
-    <li>No sketches yet.</li>
-  {% endfor %}
-</ul>
+  <h2 style="font-size: 2rem; color: #7E22CE; margin-bottom: 10px;">📘 {{ book.name }}</h2>
 
-<a href="/book/{{ book.id }}/create-sketch/">✏️ Create a new sketch</a>
+  <p><strong style="color: #555;">Created by:</strong> {{ book.created_by.username }}</p>
+
+  <p>
+    <strong style="color: #555;">Collaborators:</strong>
+    {% if book.collaborators.exists %}
+      {{ book.collaborators.all|join:", " }}
+    {% else %}
+      <span style="color: #999;">No collaborators yet.</span>
+    {% endif %}
+  </p>
+
+  <div style="margin: 30px 0 20px;">
+    <h3 style="font-size: 1.5rem; color: #333; margin-bottom: 12px;">📄 Sketches in this Book</h3>
+
+    <ul style="list-style: none; padding: 0;">
+      {% for sketch in sketches %}
+        <li style="background: #f9f5ff; padding: 12px 18px; margin-bottom: 12px; border-left: 4px solid #7E22CE; border-radius: 6px;">
+          <a href="/sketch/{{ sketch.id }}/" style="text-decoration: none; color: #333; font-weight: 500;">
+            {{ sketch.name }}
+          </a>
+        </li>
+      {% empty %}
+        <li style="color: #777;">No sketches yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <a href="/book/{{ book.id }}/create-sketch/"
+     style="background-color: #7E22CE; color: white; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+    ✏️ Create a New Sketch
+  </a>
+
+</div>
